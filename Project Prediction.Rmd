@@ -1,0 +1,120 @@
+---
+title: 'Prediction Project for Machine Larning '
+author: "Manil Wagle"
+date: "October 19, 2015"
+output: html_document
+---
+# Summary
+Data of 6 participants performing exercises in 6 different ways if=s used for the purpose of this project. The six participants performed barbell lifts correctly and incorrectly in 5 different ways, classified as: A, B, C, D, E. The project aims to correctly predict what kind of activity is being realized as described by the *classe* variable. After initial preprocessing and cleansing teh data, the training dataset was divided into a training and testing dataset. PCA (Principal Component Analysis) was performed on training datasests. Random Forest algorothim was applied to the datasets,With an estimated error rate of $2.6$%. A cross-validated was then performed with the test set where  an error rate of $2.27$% was obtained.
+
+# Analysis
+
+```{r,message=FALSE, warning=FALSE}
+library(caret); library(randomForest)
+```
+
+
+```{r}
+trainData <- read.csv("../pml-training.csv",na.strings=c("","NA"))
+testData <- read.csv("../pml-testing.csv")
+```
+
+
+## Pre-processing
+
+The dimensions of the training data is
+```{r,echo=FALSE}
+dim(trainData)
+```
+
+Preproseesing of the data was crucial to reduce the number of variables.The exploratory analysis suggested that   as many as $100$ variables have well over $97$% of missing values ,
+
+```{r}
+na.ind <-as.vector(which(colSums(is.na(trainData))>10000,arr.ind=T))
+length(na.ind)
+```
+
+
+Please refer to summary of the variable *max_roll_belt* for example.
+```{r}
+summary(trainData[,18])
+```
+
+Many varaibles not needed for analysis were dropped like participants aname and other varaibles related to time,
+
+```{r}
+other.ind <- 1:7
+names(trainData)[1:7]
+```
+
+Data cleansing resulted in 53 variables.
+
+```{r}
+#preprocessed datasets with reduced variables
+exclude.ind <- c(other.ind,na.ind); exclude.ind<- exclude.ind[order(exclude.ind)]
+training2 <- trainData[,-exclude.ind]
+testing2 <- testData[,-exclude.ind]
+```
+
+## Data Partition
+Datasets was divided into 70% training datasets and 30% test datasets as our cross-validation dataset. *createDataPartition* was used for this partition.
+For reproducibility purposes, we used a seed number.
+
+```{r}
+# set seed
+set.seed(3232)
+# Partition training set into training/testing
+inTrain <- createDataPartition(y = training2$classe, p = .7, list = FALSE)
+training <- training2[inTrain,]
+testing <- training2[-inTrain,]
+```
+
+## Further pre-processing
+
+Histogram confirmed the skewness in the variables,
+```{r,echo=FALSE,fig.height=5,fig.width=5}
+hist(training$yaw_belt,xlab="yaw_belt",main=NULL)
+```
+
+PCA(Principal Component Analysis) was done to remove unnecessary predictors, as a rsulut, only the essential varaibles were left for the analysis.
+
+```{r}
+preObj <- preProcess(training[,-53],method=c("center","scale","pca"))
+```
+
+We then build the model based on our training datasets
+```{r}
+trainPC <- predict(preObj,training[,-53])
+modelFit <- train(training$classe~., data=trainPC, method="rf")
+```
+
+
+The resulting model using random forest looks like,
+```{r}
+modelFit$finalModel
+```
+
+### Out-of-sample error
+
+
+Estimated out-of-sample error obtained by the random forest is 2.6. 
+Cross-validation was then performed to ensure there was no overfitting.
+
+
+Applying the training model to the test datasets,
+```{r}
+#predicting new values with random forest
+testPC <- predict(preObj,testing[,-53])
+predictions <- predict(modelFit,testPC)
+confusion<-confusionMatrix(testing$classe,predictions)
+#conf
+```
+
+
+```{r}
+confusion$overall[1]
+```
+
+
+# References
+[1] Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
