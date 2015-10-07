@@ -15,8 +15,8 @@ library(caret); library(randomForest)
 
 
 ```{r}
-trainData <- read.csv("../pml-training.csv",na.strings=c("","NA"))
-testData <- read.csv("../pml-testing.csv")
+trainData <- read.csv("pml-training.csv",na.strings=c("","NA"))
+testData <- read.csv("pml-testing.csv")
 ```
 
 
